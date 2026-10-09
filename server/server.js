@@ -4,11 +4,14 @@ const {
 } = require("./services/aiService");
 
 const express = require("express");
+const connectDB = require("./config/db");
+const LearningSession = require("./models/LearningSession");
 const cors = require("cors");
 require("dotenv").config();
 
 
 const app = express();
+connectDB();
 
 app.use(cors());
 app.use(express.json());
@@ -65,6 +68,31 @@ app.post("/api/evaluate-answer", async (req, res) => {
     res.status(500).json({
       error: "Failed to evaluate answer",
     });
+  }
+});
+
+app.post("/api/sessions", async (req, res) => {
+  try {
+    const session = new LearningSession(req.body);
+
+    const savedSession = await session.save();
+
+    res.status(201).json(savedSession);
+  } catch (error) {
+    console.error("Error saving session:", error);
+    res.status(500).json({ error: "Failed to save session" });
+  }
+});
+
+app.get("/api/sessions", async (req, res) => {
+  try {
+    const sessions = await LearningSession.find()
+      .sort({ createdAt: -1 });
+
+    res.json(sessions);
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ error: "Failed to fetch sessions" });
   }
 });
 

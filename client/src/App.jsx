@@ -1,5 +1,10 @@
-import { generateQuestionsFromAI, evaluateAnswerWithAI } from "./services/api";
-import { useState } from "react";
+import {
+  generateQuestionsFromAI,
+  evaluateAnswerWithAI,
+  saveLearningSession,
+  getLearningSessions,
+} from "./services/api";
+import { useState, useEffect } from "react";
 
 function App() {
   const [showForm, setShowForm] = useState(false);
@@ -11,6 +16,8 @@ function App() {
 const [answer, setAnswer] = useState("");
 const [submitted, setSubmitted] = useState(false);
 const [results, setResults] = useState([]);
+const [sessionSaved, setSessionSaved] = useState(false);
+const [learningHistory, setLearningHistory] = useState([]);
 
 
   function saveTopic() {
@@ -31,6 +38,19 @@ const [results, setResults] = useState([]);
     setNotes("");
     setShowForm(false);
   }
+useEffect(() => {
+  async function loadLearningHistory() {
+    try {
+      const sessions = await getLearningSessions();
+      setLearningHistory(sessions);
+    } catch (error) {
+      console.error("Error loading learning history:", error);
+    }
+  }
+
+  loadLearningHistory();
+}, []);
+
 async function startQuiz(item) {
   try {
     const data = await generateQuestionsFromAI(
@@ -42,14 +62,16 @@ async function startQuiz(item) {
     console.log("AI QUESTIONS:", data.questions);
 
     setQuiz({
-      topic: data.topic,
-      questions: data.questions,
-      currentQuestion: 0,
-    });
+  topic: data.topic,
+  notes: item.notes,
+  questions: data.questions,
+  currentQuestion: 0,
+});
 
     setAnswer("");
     setSubmitted(false);
     setResults([]);
+    setSessionSaved(false);
   } catch (error) {
     console.error("Error generating questions:", error);
     alert("Failed to generate questions.");
@@ -115,9 +137,12 @@ async function submitAnswer() {
         ...updatedResults,
         {
           questionIndex: quiz.currentQuestion,
-          score: score,
-          feedback: evaluation.feedback,
-          missingConcepts: evaluation.missingConcepts,
+  question: currentQuestion.question,
+  keyConcepts: currentQuestion.keyConcepts,
+  answer: answer,
+  score: score,
+  feedback: evaluation.feedback,
+  missingConcepts: evaluation.missingConcepts,
         },
       ];
     });
@@ -140,6 +165,43 @@ function calculateFinalScore() {
 
   return (totalScore / results.length).toFixed(1);
 }
+
+async function saveSession() {
+  try {
+    const sessionData = {
+      topic: quiz.topic,
+      notes: quiz.notes,
+      questions: results
+        .sort((a, b) => a.questionIndex - b.questionIndex)
+        .map((result) => ({
+          question: result.question,
+          keyConcepts: result.keyConcepts,
+          answer: result.answer,
+          score: result.score,
+          feedback: result.feedback,
+          missingConcepts: result.missingConcepts,
+        })),
+      overallScore: Number(calculateFinalScore()),
+    };
+
+    const savedSession = await saveLearningSession(sessionData);
+
+    console.log("SESSION SAVED:", savedSession);
+  } catch (error) {
+    console.error("Error saving session:", error);
+    alert("Failed to save learning session.");
+  }
+}
+useEffect(() => {
+  if (
+    quiz &&
+    results.length === quiz.questions.length &&
+    !sessionSaved
+  ) {
+    saveSession();
+    setSessionSaved(true);
+  }
+}, [results, quiz, sessionSaved]);
 
 function getWeakQuestions() {
   return results.filter((result) => result.score < 5);
@@ -172,6 +234,8 @@ function getRevisionMessage() {
         + Add New Topic
       </button>
 
+      
+
       {showForm && (
         <div>
           <h2>Add New Topic</h2>
@@ -202,6 +266,34 @@ function getRevisionMessage() {
       )}
 
       <h2>Your Topics</h2>
+
+      <section>
+  <h2>📚 Learning History</h2>
+
+  {learningHistory.length === 0 ? (
+    <p>No learning sessions yet. Complete a quiz to see your history.</p>
+  ) : (
+    <div>
+      {learningHistory.map((session) => (
+        <div key={session._id}>
+          <h3>{session.topic}</h3>
+
+          <p>
+            Overall Score: {session.overallScore}/10
+          </p>
+
+          <p>
+            Completed:{" "}
+            {new Date(session.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
+
+
 
       {topics.map((item) => (
   <div key={item.id}>
