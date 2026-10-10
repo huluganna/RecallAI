@@ -1,15 +1,16 @@
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+).replace(/\/$/, "");
+
 export async function generateQuestionsFromAI(topic, notes) {
   const response = await fetch(
-    "http://localhost:5000/api/generate-questions",
+    `${API_BASE_URL}/api/generate-questions`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        topic: topic,
-        notes: notes,
-      }),
+      body: JSON.stringify({ topic, notes }),
     }
   );
 
@@ -17,29 +18,22 @@ export async function generateQuestionsFromAI(topic, notes) {
     throw new Error("Failed to generate questions");
   }
 
-  const data = await response.json();
-
-  return data;
+  return await response.json();
 }
 
 export async function evaluateAnswerWithAI(
   question,
   answer,
   keyConcepts
-)
-{
+) {
   const response = await fetch(
-    "http://localhost:5000/api/evaluate-answer",
+    `${API_BASE_URL}/api/evaluate-answer`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        question: question,
-        answer: answer,
-        keyConcepts: keyConcepts,
-      }),
+      body: JSON.stringify({ question, answer, keyConcepts }),
     }
   );
 
@@ -47,14 +41,12 @@ export async function evaluateAnswerWithAI(
     throw new Error("Failed to evaluate answer");
   }
 
-  const data = await response.json();
-
-  return data;
+  return await response.json();
 }
 
 export async function saveLearningSession(sessionData) {
   const response = await fetch(
-    "http://localhost:5000/api/sessions",
+    `${API_BASE_URL}/api/sessions`,
     {
       method: "POST",
       headers: {
@@ -71,10 +63,9 @@ export async function saveLearningSession(sessionData) {
   return await response.json();
 }
 
-
 export async function getLearningSessions() {
   const response = await fetch(
-    "http://localhost:5000/api/sessions"
+    `${API_BASE_URL}/api/sessions`
   );
 
   if (!response.ok) {
